@@ -1,4 +1,5 @@
 import os
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -10,6 +11,7 @@ DATABASE_URL = os.getenv(
     "DATABASE_URL",
     "postgresql+asyncpg://telegift:telegift@localhost:5432/telegift",
 )
+
 
 def validate_bot_config() -> None:
     if not BOT_TOKEN:

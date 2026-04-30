@@ -1,11 +1,14 @@
 import asyncio
 import logging
+
 from aiogram import Bot, Dispatcher
+
 from config import BOT_TOKEN, validate_bot_config
 from database import close_database, wait_for_database
 from handlers import routers
 
 logging.basicConfig(level=logging.INFO)
+
 
 async def main():
     validate_bot_config()

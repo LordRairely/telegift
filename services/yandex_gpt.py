@@ -1,5 +1,7 @@
 import aiohttp
+
 from config import YANDEX_API_KEY, YANDEX_FOLDER_ID
+
 
 async def generate_gift_ideas(dialog_text: str) -> str:
     """
@@ -9,19 +11,19 @@ async def generate_gift_ideas(dialog_text: str) -> str:
         return "Ошибка: Не настроены ключи Yandex Cloud в .env файле."
 
     url = "https://llm.api.cloud.yandex.net/foundationModels/v1/completion"
-    
+
     headers = {
         "Authorization": f"Api-Key {YANDEX_API_KEY}",
         "x-folder-id": YANDEX_FOLDER_ID,
         "x-data-logging-enabled": "false"
     }
-    
+
     # Чтобы не превышать лимиты токенов, обрежем диалог до последних 10000 символов
     dialog_text = dialog_text[-10000:]
-    
+
     # Формируем промпт
     prompt = f"Проанализируй следующую анонимизированную переписку между людьми и предложи 3-5 креативных идей для подарка одному из них, на основе их интересов, хобби или упоминаний в диалоге. Игнорируй технические маркеры персональных данных вроде [телефон], [адрес], [email]. Обоснуй каждую идею.\n\nПереписка:\n{dialog_text}"
-    
+
     payload = {
         "modelUri": f"gpt://{YANDEX_FOLDER_ID}/yandexgpt",
         "completionOptions": {
@@ -46,7 +48,7 @@ async def generate_gift_ideas(dialog_text: str) -> str:
             if response.status != 200:
                 text = await response.text()
                 return f"Ошибка API Yandex: {text}"
-                
+
             data = await response.json()
             try:
                 result = data['result']['alternatives'][0]['message']['text']
