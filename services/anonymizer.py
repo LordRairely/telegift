@@ -1,6 +1,5 @@
 import re
 
-
 EMAIL_PATTERN = re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.IGNORECASE)
 URL_PATTERN = re.compile(r"\b(?:https?://|www\.)\S+\b", re.IGNORECASE)
 TELEGRAM_USERNAME_PATTERN = re.compile(r"(?<!\w)@[A-Za-z0-9_]{5,32}\b")

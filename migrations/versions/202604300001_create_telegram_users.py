@@ -11,7 +11,6 @@ from typing import Optional, Union
 import sqlalchemy as sa
 from alembic import op
 
-
 revision: str = "202604300001"
 down_revision: Optional[str] = None
 branch_labels: Optional[Union[str, Sequence[str]]] = None
