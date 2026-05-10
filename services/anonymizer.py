@@ -1,4 +1,5 @@
 import re
+from typing import Optional
 
 EMAIL_PATTERN = re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.IGNORECASE)
 URL_PATTERN = re.compile(r"\b(?:https?://|www\.)\S+\b", re.IGNORECASE)
@@ -51,12 +52,18 @@ NAME_FIELD_PATTERN = re.compile(
 AUTHOR_PATTERN = re.compile(r"^([^:\n]{1,80}):", re.MULTILINE)
 
 
-def anonymize_dialog_text(dialog_text: str) -> str:
+def anonymize_dialog_text(
+    dialog_text: str,
+    author_aliases: Optional[dict[str, str]] = None,
+    sensitive_values: Optional[list[str]] = None,
+) -> str:
     """
     Удаляет персональные данные из текста диалога перед внешним анализом.
     Авторов заменяет стабильными псевдонимами внутри одного диалога.
     """
-    anonymized = _anonymize_authors(dialog_text)
+    anonymized = _replace_known_values(dialog_text, author_aliases or {}, sensitive_values or [])
+    anonymized = _anonymize_authors(anonymized, author_aliases or {})
+    anonymized = _replace_known_values(anonymized, author_aliases or {}, sensitive_values or [])
 
     replacements = (
         (SENSITIVE_FIELD_PATTERN, "[секретные данные]"),
@@ -83,13 +90,37 @@ def anonymize_dialog_text(dialog_text: str) -> str:
     return anonymized
 
 
-def _anonymize_authors(dialog_text: str) -> str:
+def _replace_known_values(dialog_text: str, author_aliases: dict[str, str], sensitive_values: list[str]) -> str:
+    anonymized = dialog_text
+
+    for value, alias in sorted(author_aliases.items(), key=lambda item: len(item[0]), reverse=True):
+        if len(value.strip()) < 2:
+            continue
+
+        anonymized = re.sub(re.escape(value), alias, anonymized, flags=re.IGNORECASE)
+
+    for value in sorted(set(sensitive_values), key=len, reverse=True):
+        if len(value.strip()) < 2:
+            continue
+
+        anonymized = re.sub(re.escape(value), "[имя]", anonymized, flags=re.IGNORECASE)
+
+    return anonymized
+
+
+def _anonymize_authors(dialog_text: str, known_author_aliases: dict[str, str]) -> str:
     author_aliases: dict[str, str] = {}
 
     def replace_author(match: re.Match) -> str:
         author = match.group(1).strip()
         if not author:
             return match.group(0)
+
+        if author in known_author_aliases.values():
+            return f"{author}:"
+
+        if author in known_author_aliases:
+            return f"{known_author_aliases[author]}:"
 
         if author not in author_aliases:
             author_aliases[author] = f"[Участник {len(author_aliases) + 1}]"
