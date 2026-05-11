@@ -1,6 +1,6 @@
 import unittest
 
-from services.anonymizer import anonymize_dialog_text
+from services.anonymizer import anonymize_dialog_text, anonymize_free_text
 
 
 class AnonymizerTestCase(unittest.TestCase):
@@ -17,17 +17,28 @@ class AnonymizerTestCase(unittest.TestCase):
 
         self.assertIn("[Участник 1]:", result)
         self.assertIn("[Участник 2]:", result)
-        self.assertIn("[телефон]", result)
-        self.assertIn("[номер карты]", result)
-        self.assertIn("[email]", result)
-        self.assertIn("[секретные данные]", result)
-        self.assertIn("[адрес]", result)
-        self.assertIn("[telegram_username]", result)
+        self.assertIn("[PHONE_HIDDEN]", result)
+        self.assertIn("[CARD_HIDDEN]", result)
+        self.assertIn("[EMAIL_HIDDEN]", result)
+        self.assertIn("[SENSITIVE_HIDDEN]", result)
+        self.assertIn("[ADDRESS_HIDDEN]", result)
+        self.assertIn("[TELEGRAM_USERNAME_HIDDEN]", result)
         self.assertNotIn("Ivan Petrov", result)
         self.assertNotIn("Мария", result)
         self.assertNotIn("999", result)
         self.assertNotIn("ivan.petrov@example.com", result)
         self.assertNotIn("Тверская", result)
+
+    def test_masks_free_text_without_author_replacement(self):
+        source = "Повод: ДР. Доставка: ул. Ленина, д. 10, кв. 5. Email test@example.com"
+
+        result = anonymize_free_text(source)
+
+        self.assertIn("Повод:", result)
+        self.assertIn("[ADDRESS_HIDDEN]", result)
+        self.assertIn("[EMAIL_HIDDEN]", result)
+        self.assertNotIn("Ленина", result)
+        self.assertNotIn("test@example.com", result)
 
 
 if __name__ == "__main__":

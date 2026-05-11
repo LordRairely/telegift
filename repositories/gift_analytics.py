@@ -1,6 +1,6 @@
 from typing import Optional
 
-from sqlalchemy import func, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models import GiftAnalysis, GiftFeedback, TelegramUser
@@ -22,6 +22,16 @@ async def create_gift_analysis(
     session.add(analysis)
     await session.commit()
     return analysis.id
+
+
+async def count_gift_analyses_for_user(session: AsyncSession, telegram_id: int) -> int:
+    statement = (
+        select(func.count(GiftAnalysis.id))
+        .join(TelegramUser, TelegramUser.id == GiftAnalysis.telegram_user_id)
+        .where(TelegramUser.telegram_id == telegram_id)
+    )
+    result = await session.execute(statement)
+    return result.scalar_one()
 
 
 async def mark_gift_analysis_success(session: AsyncSession, analysis_id: int, telegram_user_id: int) -> None:

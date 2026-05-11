@@ -7,18 +7,27 @@ from aiogram import Bot, F, Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import Message
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
+from config import PRIVACY_POLICY_URL
 from database import async_session_factory
 from repositories.gift_analytics import (
+    count_gift_analyses_for_user,
     create_gift_analysis,
     mark_gift_analysis_failed,
     mark_gift_analysis_success,
     save_gift_feedback,
 )
-from repositories.telegram_users import upsert_telegram_user
+from repositories.telegram_users import accept_terms, has_accepted_terms, upsert_telegram_user
 from services.parser import parse_dialog_file
 from services.referrals import parse_start_source
+from services.upload_limits import (
+    ADMIN_DIALOG_URL,
+    ADMIN_USERNAME,
+    MAX_UPLOAD_ATTEMPTS,
+    build_upload_limit_message,
+    can_upload_more,
+)
 from services.yandex_gpt import answer_dialog_question, generate_gift_ideas
 
 router = Router()
@@ -34,6 +43,17 @@ MAX_DOWNLOAD_SIZE_MB = 20
 MAX_DOWNLOAD_SIZE_BYTES = MAX_DOWNLOAD_SIZE_MB * 1024 * 1024
 MAX_SPLIT_HINT_SIZE_MB = 35
 MAX_SPLIT_HINT_SIZE_BYTES = MAX_SPLIT_HINT_SIZE_MB * 1024 * 1024
+ACCEPT_TERMS_CALLBACK = "accept_terms"
+TERMS_REQUIRED_TEXT = (
+    "Перед анализом переписки нужно принять условия обработки данных.\n\n"
+    "Нажимая кнопку «Начать», вы соглашаетесь с Политикой обработки персональных данных "
+    "и даете согласие на обработку загружаемых файлов. Я временно скачиваю файл, "
+    "анонимизирую текст и отправляю обезличенный фрагмент во внешний AI-сервис YandexGPT."
+)
+FREE_LIMIT_TEXT = (
+    f"Бесплатно доступно {MAX_UPLOAD_ATTEMPTS} анализа файлов. "
+    f"Если нужно больше анализов, напиши администратору @{ADMIN_USERNAME}."
+)
 CONTEXT_QUESTIONS_TEXT = (
     "Перед анализом ответь, пожалуйста, на 5 коротких вопросов одним сообщением:\n\n"
     "1. Повод: день рождения, годовщина, Новый год или другое?\n"
@@ -66,27 +86,81 @@ def get_help_text() -> str:
     )
 
 
-@router.message(Command("start"))
-async def cmd_start(message: Message):
+def get_terms_keyboard() -> InlineKeyboardMarkup:
+    buttons = [[InlineKeyboardButton(text="Начать", callback_data=ACCEPT_TERMS_CALLBACK)]]
+    if PRIVACY_POLICY_URL:
+        buttons.append([InlineKeyboardButton(text="Политика обработки персональных данных", url=PRIVACY_POLICY_URL)])
+
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def get_admin_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[[InlineKeyboardButton(text="Написать администратору", url=ADMIN_DIALOG_URL)]]
+    )
+
+
+async def ensure_terms_accepted(message: Message, state: FSMContext) -> bool:
+    data = await state.get_data()
+    if data.get("terms_accepted"):
+        return True
+
     if message.from_user:
         try:
-            acquisition_source, referred_by_code = parse_start_source(message.text)
             async with async_session_factory() as session:
-                await upsert_telegram_user(
-                    session,
-                    message.from_user,
-                    acquisition_source=acquisition_source,
-                    referred_by_code=referred_by_code,
-                )
+                if await has_accepted_terms(session, message.from_user.id):
+                    await state.update_data(terms_accepted=True)
+                    return True
         except Exception:
-            logger.exception("Failed to upsert Telegram user")
+            logger.exception("Failed to check terms acceptance")
+
+    await message.answer(TERMS_REQUIRED_TEXT, reply_markup=get_terms_keyboard())
+    return False
+
+
+@router.message(Command("start"))
+async def cmd_start(message: Message, state: FSMContext):
+    acquisition_source, referred_by_code = parse_start_source(message.text)
+    await state.update_data(
+        acquisition_source=acquisition_source,
+        referred_by_code=referred_by_code,
+    )
 
     await message.answer(
         "Привет! Я бот TeleGift. Сделай экспорт чата с человеком, для которого ищешь подарок, "
-        "и отправь файл мне в формате JSON или TXT. Я почитаю переписку и предложу классные идеи!\n\n"
+        "и отправь файл мне в формате JSON или TXT. Я проанализирую переписку и предложу классные идеи!\n\n"
+        + FREE_LIMIT_TEXT
+        + "\n\n"
+        + TERMS_REQUIRED_TEXT
+        + "\n\n"
         "Команды:\n"
-        + "\n".join(AVAILABLE_COMMANDS)
+        + "\n".join(AVAILABLE_COMMANDS),
+        reply_markup=get_terms_keyboard(),
     )
+
+
+@router.callback_query(F.data == ACCEPT_TERMS_CALLBACK)
+async def handle_terms_accept(callback: CallbackQuery, state: FSMContext):
+    user = callback.from_user
+    data = await state.get_data()
+    acquisition_source = data.get("acquisition_source", "organic")
+    referred_by_code = data.get("referred_by_code")
+
+    try:
+        async with async_session_factory() as session:
+            await accept_terms(
+                session,
+                user,
+                acquisition_source=acquisition_source,
+                referred_by_code=referred_by_code,
+            )
+        await state.update_data(terms_accepted=True)
+        await callback.answer("Согласие принято")
+        if callback.message:
+            await callback.message.answer("Готово. Теперь отправь экспорт чата в формате JSON или TXT.")
+    except Exception:
+        logger.exception("Failed to save terms acceptance")
+        await callback.answer("Не удалось сохранить согласие", show_alert=True)
 
 
 @router.message(Command("help"))
@@ -102,6 +176,23 @@ async def cmd_cancel(message: Message, state: FSMContext):
 
 @router.message(F.document)
 async def handle_document(message: Message, state: FSMContext):
+    if not await ensure_terms_accepted(message, state):
+        return
+
+    if message.from_user:
+        try:
+            async with async_session_factory() as session:
+                upload_attempt_count = await count_gift_analyses_for_user(session, message.from_user.id)
+
+            if not can_upload_more(message.from_user.username, upload_attempt_count):
+                await message.answer(
+                    build_upload_limit_message(upload_attempt_count),
+                    reply_markup=get_admin_keyboard(),
+                )
+                return
+        except Exception:
+            logger.exception("Failed to check upload limit")
+
     file_name = message.document.file_name or ""
     file_extension = Path(file_name).suffix.lower()
 
@@ -135,6 +226,9 @@ async def handle_document(message: Message, state: FSMContext):
 
 @router.message(GiftFlow.waiting_for_context, F.text)
 async def handle_gift_context(message: Message, bot: Bot, state: FSMContext):
+    if not await ensure_terms_accepted(message, state):
+        return
+
     data = await state.get_data()
     file_id = data.get("file_id")
     file_extension = data.get("file_extension") or ".json"
@@ -155,9 +249,10 @@ async def handle_gift_context(message: Message, bot: Bot, state: FSMContext):
     tmp_file = tempfile.NamedTemporaryFile(delete=False, prefix="telegift_", suffix=file_extension)
     local_path = tmp_file.name
     tmp_file.close()
-    await bot.download_file(file_path, local_path)
 
     try:
+        await bot.download_file(file_path, local_path)
+
         if message.from_user:
             try:
                 async with async_session_factory() as session:
@@ -236,6 +331,9 @@ async def handle_feedback(message: Message, state: FSMContext):
 
 @router.message(GiftFlow.qa, F.text)
 async def handle_dialog_question(message: Message, state: FSMContext):
+    if not await ensure_terms_accepted(message, state):
+        return
+
     data = await state.get_data()
     dialog_text = data.get("dialog_text")
 

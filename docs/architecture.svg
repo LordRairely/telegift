@@ -1,23 +1,28 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="860" viewBox="0 0 1280 860" role="img" aria-labelledby="title desc">
-  <title id="title">Реальная архитектура GiftSensor</title>
-  <desc id="desc">Схема текущего Telegram-бота: загрузка файла, вопросы перед анализом, анонимизация, YandexGPT, Q&amp;A по переписке и PostgreSQL-аналитика.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="980" viewBox="0 0 1440 980" role="img" aria-labelledby="title desc">
+  <title id="title">GiftSensor: текущие процессы после обновления 152-ФЗ</title>
+  <desc id="desc">Схема Telegram-бота: согласие пользователя, ссылка на политику, загрузка файла, временное хранение, анонимизация, YandexGPT, Q&amp;A, feedback, PostgreSQL и Alembic-миграции.</desc>
   <defs>
     <style>
-      .bg { fill: #f7f3ea; }
-      .title { font: 700 34px Arial, sans-serif; fill: #17202a; }
-      .subtitle { font: 400 17px Arial, sans-serif; fill: #526070; }
+      .bg { fill: #f7f8fb; }
+      .title { font: 700 34px Arial, sans-serif; fill: #152033; }
+      .subtitle { font: 400 16px Arial, sans-serif; fill: #526070; }
+      .lane { fill: #ffffff; stroke: #d7dde6; stroke-width: 1.5; rx: 8; }
       .box { fill: #ffffff; stroke: #253142; stroke-width: 2; rx: 8; }
       .blue { fill: #eaf4ff; stroke: #2364aa; }
       .green { fill: #ecf7ef; stroke: #24824d; }
       .amber { fill: #fff4df; stroke: #b36b00; }
+      .red { fill: #fff0f0; stroke: #b33a3a; }
       .gray { fill: #f4f6f8; stroke: #657181; }
-      .label { font: 700 18px Arial, sans-serif; fill: #17202a; }
+      .purple { fill: #f2efff; stroke: #6750a4; }
+      .label { font: 700 18px Arial, sans-serif; fill: #152033; }
       .text { font: 400 14px Arial, sans-serif; fill: #253142; }
       .small { font: 400 12px Arial, sans-serif; fill: #526070; }
-      .note { font: 700 13px Arial, sans-serif; fill: #a22d2d; }
+      .note { font: 700 13px Arial, sans-serif; fill: #9b1c1c; }
+      .ok { font: 700 13px Arial, sans-serif; fill: #18623a; }
+      .laneTitle { font: 700 13px Arial, sans-serif; fill: #526070; letter-spacing: 0; }
       .pill { fill: #253142; rx: 12; }
       .pillText { font: 700 12px Arial, sans-serif; fill: #ffffff; }
-      .arrow { stroke: #253142; stroke-width: 2.5; fill: none; marker-end: url(#arrowhead); }
+      .arrow { stroke: #253142; stroke-width: 2.4; fill: none; marker-end: url(#arrowhead); }
       .soft { stroke: #657181; stroke-width: 2; fill: none; marker-end: url(#arrowheadSoft); stroke-dasharray: 6 5; }
     </style>
     <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
@@ -28,111 +33,122 @@
     </marker>
   </defs>
 
-  <rect class="bg" width="1280" height="860"/>
+  <rect class="bg" width="1440" height="980"/>
 
-  <text x="64" y="64" class="title">GiftSensor: текущая архитектура из кода</text>
-  <text x="64" y="94" class="subtitle">В схеме только реализованные функции: без маркетплейсов, платежей, календарей и других будущих интеграций.</text>
+  <text x="64" y="62" class="title">GiftSensor: процессы после обновления 152-ФЗ</text>
+  <text x="64" y="92" class="subtitle">Добавлены явное согласие, ссылка на политику, хранение факта согласия, усиленная анонимизация и миграция БД.</text>
 
-  <rect x="64" y="136" width="226" height="134" class="box blue"/>
-  <text x="92" y="170" class="label">Пользователь</text>
-  <text x="92" y="200" class="text">Отправляет JSON/TXT</text>
-  <text x="92" y="222" class="text">Отвечает на 5 вопросов</text>
-  <text x="92" y="244" class="text">Задаёт вопросы по переписке</text>
-  <text x="92" y="266" class="text">Оценивает идеи через /feedback</text>
+  <rect x="48" y="122" width="1344" height="202" class="lane"/>
+  <text x="64" y="146" class="laneTitle">1. Вход пользователя и юридический контур</text>
 
-  <rect x="374" y="126" width="252" height="154" class="box"/>
-  <text x="402" y="160" class="label">bot.py + aiogram</text>
-  <text x="402" y="190" class="text">Polling Telegram Bot API</text>
-  <text x="402" y="212" class="text">Router из handlers/base.py</text>
-  <text x="402" y="234" class="text">Команды: /start /help</text>
-  <text x="402" y="256" class="text">/cancel /feedback</text>
+  <rect x="72" y="170" width="218" height="118" class="box blue"/>
+  <text x="96" y="202" class="label">Пользователь</text>
+  <text x="96" y="230" class="text">Открывает /start</text>
+  <text x="96" y="252" class="text">Получает условия</text>
+  <text x="96" y="274" class="text">Нажимает «Начать»</text>
 
-  <rect x="710" y="126" width="226" height="154" class="box amber"/>
-  <text x="738" y="160" class="label">FSM-сценарий</text>
-  <text x="738" y="190" class="text">waiting_for_context</text>
-  <text x="738" y="212" class="text">qa</text>
-  <text x="738" y="234" class="text">Хранит file_id</text>
-  <text x="738" y="256" class="text">и анонимизированный диалог</text>
-  <text x="738" y="278" class="small">только в текущей сессии</text>
+  <rect x="348" y="160" width="258" height="138" class="box amber"/>
+  <text x="372" y="192" class="label">Consent gate</text>
+  <text x="372" y="220" class="text">handlers/base.py</text>
+  <text x="372" y="242" class="text">Кнопка «Начать»</text>
+  <text x="372" y="264" class="text">Без согласия файл не принят</text>
+  <text x="372" y="286" class="ok">До согласия нет записи в БД</text>
 
-  <rect x="1006" y="126" width="210" height="154" class="box amber"/>
-  <text x="1034" y="160" class="label">Временный файл</text>
-  <text x="1034" y="190" class="text">tempfile.NamedTemporaryFile</text>
-  <text x="1034" y="212" class="text">Скачивание через bot</text>
-  <text x="1034" y="234" class="text">download_file()</text>
-  <text x="1034" y="256" class="note">Удаляется в finally</text>
+  <rect x="664" y="160" width="258" height="138" class="box purple"/>
+  <text x="688" y="192" class="label">Политика ПД</text>
+  <text x="688" y="220" class="text">PRIVACY_POLICY_URL</text>
+  <text x="688" y="242" class="text">Кнопка-ссылка в /start</text>
+  <text x="688" y="264" class="text">bot.set_my_description()</text>
+  <text x="688" y="286" class="small">Google Docs с политикой</text>
 
-  <rect x="64" y="366" width="260" height="164" class="box green"/>
-  <text x="92" y="400" class="label">services/parser.py</text>
-  <text x="92" y="430" class="text">parse_dialog_file()</text>
-  <text x="92" y="452" class="text">parse_telegram_json()</text>
-  <text x="92" y="474" class="text">parse_text_file()</text>
-  <text x="92" y="496" class="text">Роли: Подаркодаритель</text>
-  <text x="92" y="518" class="text">и Подаркополучатель</text>
+  <rect x="980" y="160" width="286" height="138" class="box gray"/>
+  <text x="1004" y="192" class="label">PostgreSQL: telegram_users</text>
+  <text x="1004" y="220" class="text">telegram_id, username, names</text>
+  <text x="1004" y="242" class="text">referral/acquisition source</text>
+  <text x="1004" y="264" class="text">terms_accepted_at</text>
+  <text x="1004" y="286" class="small">факт и время согласия</text>
 
-  <rect x="374" y="366" width="252" height="164" class="box green"/>
-  <text x="402" y="400" class="label">services/anonymizer.py</text>
-  <text x="402" y="430" class="text">Маскирует email, телефон</text>
-  <text x="402" y="452" class="text">адрес, документы, карты</text>
-  <text x="402" y="474" class="text">имена, usernames, URL</text>
-  <text x="402" y="496" class="text">Авторов заменяет ролями</text>
-  <text x="402" y="518" class="note">Сырой чат в БД не пишется</text>
+  <path d="M290 229 H348" class="arrow"/>
+  <path d="M606 229 H664" class="arrow"/>
+  <path d="M922 229 H980" class="arrow"/>
 
-  <rect x="710" y="356" width="226" height="184" class="box blue"/>
-  <text x="738" y="390" class="label">services/yandex_gpt.py</text>
-  <text x="738" y="420" class="text">generate_gift_ideas()</text>
-  <text x="738" y="442" class="text">answer_dialog_question()</text>
-  <text x="738" y="464" class="text">x-data-logging-enabled: false</text>
-  <text x="738" y="486" class="text">Retries + timeout</text>
-  <text x="738" y="508" class="small">В модель уходит анонимизированный</text>
-  <text x="738" y="528" class="small">диалог, обрезанный до 10000 символов</text>
+  <rect x="48" y="354" width="1344" height="260" class="lane"/>
+  <text x="64" y="378" class="laneTitle">2. Анализ переписки и zero-persistence</text>
 
-  <rect x="1006" y="356" width="210" height="184" class="box"/>
-  <text x="1034" y="390" class="label">Ответы бота</text>
-  <text x="1034" y="420" class="text">Идеи подарков</text>
-  <text x="1034" y="442" class="text">Сценарии подарка</text>
-  <text x="1034" y="464" class="text">Бюджетные варианты</text>
-  <text x="1034" y="486" class="text">Q&amp;A строго по чату</text>
-  <text x="1034" y="508" class="text">Если ответа нет:</text>
-  <text x="1034" y="530" class="small">«В переписке нет ответа...»</text>
+  <rect x="72" y="410" width="218" height="154" class="box blue"/>
+  <text x="96" y="442" class="label">Файл чата</text>
+  <text x="96" y="470" class="text">JSON или TXT</text>
+  <text x="96" y="492" class="text">Проверка расширения</text>
+  <text x="96" y="514" class="text">Проверка размера</text>
+  <text x="96" y="536" class="small">после принятия условий</text>
 
-  <rect x="64" y="626" width="356" height="160" class="box gray"/>
-  <text x="92" y="660" class="label">PostgreSQL: telegram_users</text>
-  <text x="92" y="690" class="text">telegram_id, username, first_name, last_name</text>
-  <text x="92" y="712" class="text">acquisition_source, referral_code</text>
-  <text x="92" y="734" class="text">referred_by_code, analysis_count</text>
-  <text x="92" y="756" class="text">last_analysis_at, has_paid, timestamps</text>
+  <rect x="348" y="410" width="258" height="154" class="box amber"/>
+  <text x="372" y="442" class="label">FSM-сценарий</text>
+  <text x="372" y="470" class="text">waiting_for_context</text>
+  <text x="372" y="492" class="text">Хранит file_id</text>
+  <text x="372" y="514" class="text">5 вопросов о подарке</text>
+  <text x="372" y="536" class="small">контекст тоже анонимизируется</text>
 
-  <rect x="462" y="626" width="336" height="160" class="box gray"/>
-  <text x="490" y="660" class="label">PostgreSQL: gift_analyses</text>
-  <text x="490" y="690" class="text">telegram_user_id</text>
-  <text x="490" y="712" class="text">file_format, file_size_bytes</text>
-  <text x="490" y="734" class="text">status, error_type</text>
-  <text x="490" y="756" class="text">started_at, finished_at, timestamps</text>
+  <rect x="664" y="410" width="258" height="154" class="box red"/>
+  <text x="688" y="442" class="label">Временный файл</text>
+  <text x="688" y="470" class="text">tempfile.NamedTemporaryFile</text>
+  <text x="688" y="492" class="text">download_file() внутри try</text>
+  <text x="688" y="514" class="note">os.remove() в finally</text>
+  <text x="688" y="536" class="small">исходный файл не пишется в БД</text>
 
-  <rect x="840" y="626" width="376" height="160" class="box gray"/>
-  <text x="868" y="660" class="label">PostgreSQL: gift_feedback</text>
-  <text x="868" y="690" class="text">analysis_id</text>
-  <text x="868" y="712" class="text">gift_index, rating</text>
-  <text x="868" y="734" class="text">comment</text>
-  <text x="868" y="756" class="text">created_at</text>
-  <rect x="1030" y="648" width="138" height="24" class="pill"/>
-  <text x="1045" y="665" class="pillText">через /feedback</text>
+  <rect x="980" y="400" width="286" height="174" class="box green"/>
+  <text x="1004" y="432" class="label">Parser + anonymizer</text>
+  <text x="1004" y="460" class="text">parse_telegram_json()/txt()</text>
+  <text x="1004" y="482" class="text">Роли участников</text>
+  <text x="1004" y="504" class="text">[PHONE_HIDDEN], [EMAIL_HIDDEN]</text>
+  <text x="1004" y="526" class="text">[ADDRESS_HIDDEN], документы</text>
+  <text x="1004" y="548" class="small">anonymize_free_text() для контекста</text>
 
-  <path d="M290 203 H374" class="arrow"/>
-  <path d="M626 203 H710" class="arrow"/>
-  <path d="M936 203 H1006" class="arrow"/>
-  <path d="M1111 280 C1111 330 194 322 194 366" class="arrow"/>
-  <path d="M324 448 H374" class="arrow"/>
-  <path d="M626 448 H710" class="arrow"/>
-  <path d="M936 448 H1006" class="arrow"/>
+  <path d="M290 487 H348" class="arrow"/>
+  <path d="M606 487 H664" class="arrow"/>
+  <path d="M922 487 H980" class="arrow"/>
+  <path d="M477 298 C477 350 477 364 477 410" class="soft"/>
 
-  <path d="M500 280 C500 570 242 570 242 626" class="soft"/>
-  <path d="M500 530 C500 590 630 590 630 626" class="soft"/>
-  <path d="M1111 540 C1111 590 1028 590 1028 626" class="soft"/>
-  <path d="M823 540 C823 590 630 590 630 626" class="soft"/>
+  <rect x="48" y="644" width="1344" height="214" class="lane"/>
+  <text x="64" y="668" class="laneTitle">3. Внешний AI-анализ, ответы и аналитика</text>
 
-  <text x="536" y="586" class="small">только продуктовые события и статусы</text>
-  <text x="850" y="586" class="small">оценки идей сохраняются отдельно</text>
-  <text x="402" y="340" class="small">анонимизация перед отправкой во внешний AI-сервис</text>
+  <rect x="72" y="700" width="270" height="118" class="box green"/>
+  <text x="96" y="732" class="label">Анонимизированный ввод</text>
+  <text x="96" y="760" class="text">Диалог до 10000 символов</text>
+  <text x="96" y="782" class="text">Контекст подарка очищен</text>
+  <text x="96" y="804" class="text">Q&amp;A-вопрос очищен</text>
+
+  <rect x="400" y="690" width="286" height="138" class="box blue"/>
+  <text x="424" y="722" class="label">YandexGPT</text>
+  <text x="424" y="750" class="text">generate_gift_ideas()</text>
+  <text x="424" y="772" class="text">answer_dialog_question()</text>
+  <text x="424" y="794" class="text">x-data-logging-enabled: false</text>
+  <text x="424" y="816" class="small">timeout + retries</text>
+
+  <rect x="744" y="690" width="250" height="138" class="box"/>
+  <text x="768" y="722" class="label">Ответы бота</text>
+  <text x="768" y="750" class="text">3-5 идей подарков</text>
+  <text x="768" y="772" class="text">Сценарии и бюджеты</text>
+  <text x="768" y="794" class="text">Q&amp;A строго по чату</text>
+  <text x="768" y="816" class="small">без восстановления имен</text>
+
+  <rect x="1052" y="690" width="286" height="138" class="box gray"/>
+  <text x="1076" y="722" class="label">Аналитика в PostgreSQL</text>
+  <text x="1076" y="750" class="text">gift_analyses: status/error</text>
+  <text x="1076" y="772" class="text">file_format, file_size_bytes</text>
+  <text x="1076" y="794" class="text">gift_feedback: rating/comment</text>
+  <text x="1076" y="816" class="small">сырой чат и файл не сохраняются</text>
+
+  <path d="M342 759 H400" class="arrow"/>
+  <path d="M686 759 H744" class="arrow"/>
+  <path d="M994 759 H1052" class="soft"/>
+  <path d="M1123 574 V628 H56 V759 H72" class="arrow"/>
+
+  <rect x="48" y="888" width="1344" height="64" class="lane"/>
+  <text x="64" y="912" class="laneTitle">4. Эксплуатационные процессы</text>
+  <text x="84" y="936" class="text">Docker Compose передаёт PRIVACY_POLICY_URL в bot-контейнер; сервис migrate выполняет Alembic upgrade head перед запуском bot.</text>
+  <rect x="1116" y="903" width="210" height="26" class="pill"/>
+  <text x="1132" y="921" class="pillText">202605100001: terms acceptance</text>
+
+  <path d="M1195 828 C1195 858 1195 872 1195 888" class="soft"/>
 </svg>

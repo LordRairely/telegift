@@ -24,6 +24,7 @@ class TelegramUser(Base):
     analysis_count: Mapped[int] = mapped_column(Integer, server_default=text("0"), nullable=False)
     last_analysis_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     has_paid: Mapped[bool] = mapped_column(Boolean, server_default=text("false"), nullable=False)
+    terms_accepted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

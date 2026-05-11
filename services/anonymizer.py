@@ -42,6 +42,11 @@ STREET_PATTERN = re.compile(
     r"(?:,[ \t]*(?:д\.?|дом|кв\.?|квартира|корп\.?|корпус|стр\.?)[ \t]*[\w/-]+)*",
     re.IGNORECASE,
 )
+BUILDING_PATTERN = re.compile(
+    r"\b(?:д\.?|дом|кв\.?|квартира|корп\.?|корпус|стр\.?)[ \t]*[\w/-]+"
+    r"(?:,[ \t]*(?:д\.?|дом|кв\.?|квартира|корп\.?|корпус|стр\.?)[ \t]*[\w/-]+)*",
+    re.IGNORECASE,
+)
 NAME_FIELD_PATTERN = re.compile(
     r"\b(?:фио|полное[ \t]+имя|имя[ \t]+получателя|меня[ \t]+зовут|"
     r"его[ \t]+зовут|е[её][ \t]+зовут|имя|фамилия|отчество)"
@@ -50,6 +55,26 @@ NAME_FIELD_PATTERN = re.compile(
     re.IGNORECASE,
 )
 AUTHOR_PATTERN = re.compile(r"^([^:\n]{1,80}):", re.MULTILINE)
+
+ANONYMIZATION_REPLACEMENTS = (
+    (SENSITIVE_FIELD_PATTERN, "[SENSITIVE_HIDDEN]"),
+    (DOB_PATTERN, "[DOB_HIDDEN]"),
+    (ADDRESS_CONTEXT_PATTERN, "[ADDRESS_HIDDEN]"),
+    (STREET_PATTERN, "[ADDRESS_HIDDEN]"),
+    (BUILDING_PATTERN, "[ADDRESS_HIDDEN]"),
+    (NAME_FIELD_PATTERN, "[NAME_HIDDEN]"),
+    (EMAIL_PATTERN, "[EMAIL_HIDDEN]"),
+    (URL_PATTERN, "[URL_HIDDEN]"),
+    (TELEGRAM_USERNAME_PATTERN, "[TELEGRAM_USERNAME_HIDDEN]"),
+    (IP_PATTERN, "[IP_HIDDEN]"),
+    (IBAN_PATTERN, "[IBAN_HIDDEN]"),
+    (SSN_PATTERN, "[DOCUMENT_HIDDEN]"),
+    (SNILS_PATTERN, "[SNILS_HIDDEN]"),
+    (PASSPORT_PATTERN, "[PASSPORT_HIDDEN]"),
+    (CARD_PATTERN, "[CARD_HIDDEN]"),
+    (PHONE_PATTERN, "[PHONE_HIDDEN]"),
+    (LONG_NUMBER_PATTERN, "[NUMBER_HIDDEN]"),
+)
 
 
 def anonymize_dialog_text(
@@ -64,27 +89,22 @@ def anonymize_dialog_text(
     anonymized = _replace_known_values(dialog_text, author_aliases or {}, sensitive_values or [])
     anonymized = _anonymize_authors(anonymized, author_aliases or {})
     anonymized = _replace_known_values(anonymized, author_aliases or {}, sensitive_values or [])
+    return _replace_personal_data_patterns(anonymized)
 
-    replacements = (
-        (SENSITIVE_FIELD_PATTERN, "[секретные данные]"),
-        (DOB_PATTERN, "[дата рождения]"),
-        (ADDRESS_CONTEXT_PATTERN, "[адрес]"),
-        (STREET_PATTERN, "[адрес]"),
-        (NAME_FIELD_PATTERN, "[имя]"),
-        (EMAIL_PATTERN, "[email]"),
-        (URL_PATTERN, "[ссылка]"),
-        (TELEGRAM_USERNAME_PATTERN, "[telegram_username]"),
-        (IP_PATTERN, "[ip]"),
-        (IBAN_PATTERN, "[iban]"),
-        (SSN_PATTERN, "[документ]"),
-        (SNILS_PATTERN, "[снилс]"),
-        (PASSPORT_PATTERN, "[паспорт]"),
-        (CARD_PATTERN, "[номер карты]"),
-        (PHONE_PATTERN, "[телефон]"),
-        (LONG_NUMBER_PATTERN, "[номер]"),
-    )
 
-    for pattern, placeholder in replacements:
+def anonymize_free_text(text: str, sensitive_values: Optional[list[str]] = None) -> str:
+    """
+    Маскирует персональные данные в произвольном пользовательском тексте.
+    Не заменяет строки вида "Поле: значение" на участников диалога.
+    """
+    anonymized = _replace_known_values(text, {}, sensitive_values or [])
+    return _replace_personal_data_patterns(anonymized)
+
+
+def _replace_personal_data_patterns(text: str) -> str:
+    anonymized = text
+
+    for pattern, placeholder in ANONYMIZATION_REPLACEMENTS:
         anonymized = pattern.sub(placeholder, anonymized)
 
     return anonymized
@@ -103,7 +123,7 @@ def _replace_known_values(dialog_text: str, author_aliases: dict[str, str], sens
         if len(value.strip()) < 2:
             continue
 
-        anonymized = re.sub(re.escape(value), "[имя]", anonymized, flags=re.IGNORECASE)
+        anonymized = re.sub(re.escape(value), "[NAME_HIDDEN]", anonymized, flags=re.IGNORECASE)
 
     return anonymized
 

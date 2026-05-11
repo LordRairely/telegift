@@ -18,7 +18,7 @@ class ParserTestCase(unittest.TestCase):
         finally:
             Path(file_path).unlink()
 
-        self.assertIn("[телефон]", result)
+        self.assertIn("[PHONE_HIDDEN]", result)
         self.assertNotIn("+7 999 123 45 67", result)
 
     def test_parse_txt_file_uses_file_sender_as_gift_giver(self):
@@ -156,6 +156,18 @@ class ParserTestCase(unittest.TestCase):
         self.assertIn("Контекст от Подаркодарителя", prompt)
         self.assertIn("Повод: день рождения", prompt)
         self.assertIn("Бюджет: до 5000", prompt)
+        self.assertIn("вариант до 2000 рублей", prompt)
+        self.assertIn("вариант от 2000 до 5 000 рублей", prompt)
+        self.assertIn("вариант выше 5 000 рублей", prompt)
+
+    def test_prompt_understands_short_budget_format(self):
+        prompt = build_gift_prompt(
+            "Подаркополучатель: любит чай",
+            gift_context="ДР, до 8к, Москва, подруга",
+        )
+
+        self.assertIn("вариант от 2000 до 8 000 рублей", prompt)
+        self.assertIn("вариант выше 8 000 рублей", prompt)
 
     def test_dialog_question_prompt_requires_evidence(self):
         prompt = build_dialog_question_prompt(

@@ -33,6 +33,10 @@ services:
       BOT_TOKEN: ${BOT_TOKEN:-}
       YANDEX_API_KEY: ${YANDEX_API_KEY:-}
       YANDEX_FOLDER_ID: ${YANDEX_FOLDER_ID:-}
+      PRIVACY_POLICY_URL: ${PRIVACY_POLICY_URL:-}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_DIALOG_URL: ${ADMIN_DIALOG_URL:-https://t.me/admin}
+      UNLIMITED_UPLOAD_USERNAMES: ${UNLIMITED_UPLOAD_USERNAMES:-}
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-telegift}:${POSTGRES_PASSWORD:-telegift}@db:5432/${POSTGRES_DB:-telegift}
     depends_on:
       db:

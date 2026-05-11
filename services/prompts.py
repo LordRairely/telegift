@@ -1,3 +1,13 @@
+import re
+from typing import Optional
+
+
+BUDGET_AMOUNT_PATTERN = re.compile(
+    r"(?<!\d)(\d+(?:[ \u00a0]?\d{3})*|\d+)(?:[,.]\d+)?[ \t]*(к|k|тыс\.?|тысяч[аи]?|руб(?:\.|лей)?|₽)?",
+    re.IGNORECASE,
+)
+
+
 def build_gift_prompt(dialog_text: str, gift_context: str = "") -> str:
     context_block = ""
     if gift_context.strip():
@@ -7,18 +17,20 @@ def build_gift_prompt(dialog_text: str, gift_context: str = "") -> str:
             f"{gift_context.strip()}\n\n"
         )
 
+    budget_instruction = _build_budget_instruction(gift_context)
+
     return (
         "Проанализируй следующую анонимизированную переписку между Подаркодарителем и Подаркополучателем. "
         "Сначала найди конкретные сигналы о Подаркополучателе: интересы, повторяющиеся темы, стиль жизни, "
         "эмоциональные потребности, недавние события, мечты, жалобы, привычки, ограничения и прямые намёки. "
         "Предложи 3-5 креативных идей подарка именно для Подаркополучателя, на основе этих сигналов. "
         "Не предлагай подарки для Подаркодарителя. "
-        "Игнорируй технические маркеры персональных данных вроде [телефон], [адрес], [email]. "
+        "Игнорируй технические маркеры персональных данных вроде [PHONE_HIDDEN], [ADDRESS_HIDDEN], [EMAIL_HIDDEN]. "
         "Не пытайся восстановить настоящие имена участников.\n\n"
         "Правила качества:\n"
         "1. Не давай универсальные подарки без опоры на переписку.\n"
         "2. Для каждой идеи укажи: название подарка, почему это подходит, какие 1-2 сигнала из диалога на это указывают, "
-        "вариант до 2000 рублей, вариант 2000-7000 рублей и вариант дороже 7000 рублей.\n"
+        f"{budget_instruction}.\n"
         "3. Если сигналов мало, честно напиши, каких данных не хватает, и предложи осторожные идеи с пометкой "
         "«гипотеза».\n"
         "4. Учитывай практичность: где такой подарок обычно купить, как красиво вручить и какой риск не попасть во вкус.\n"
@@ -44,3 +56,40 @@ def build_dialog_question_prompt(dialog_text: str, question: str) -> str:
         f"Вопрос: {question.strip()}\n\n"
         f"Переписка:\n{dialog_text}"
     )
+
+
+def _build_budget_instruction(gift_context: str) -> str:
+    budget_limit = _extract_budget_limit(gift_context)
+    if not budget_limit or budget_limit <= 2000:
+        return "вариант до 2000 рублей, вариант 2000-7000 рублей и вариант дороже 7000 рублей"
+
+    formatted_budget = _format_rub_amount(budget_limit)
+    return (
+        "вариант до 2000 рублей, вариант от 2000 до "
+        f"{formatted_budget} рублей и вариант выше {formatted_budget} рублей"
+    )
+
+
+def _extract_budget_limit(gift_context: str) -> Optional[int]:
+    if not gift_context.strip():
+        return None
+
+    amounts: list[int] = []
+    for match in BUDGET_AMOUNT_PATTERN.finditer(gift_context):
+        amount = int(match.group(1).replace(" ", "").replace("\u00a0", ""))
+        suffix = (match.group(2) or "").lower()
+
+        if suffix.startswith(("к", "k", "тыс")):
+            amount *= 1000
+
+        if amount >= 500:
+            amounts.append(amount)
+
+    if not amounts:
+        return None
+
+    return max(amounts)
+
+
+def _format_rub_amount(amount: int) -> str:
+    return f"{amount:,}".replace(",", " ")

@@ -4,7 +4,7 @@ import logging
 from aiogram import Bot, Dispatcher
 from aiogram.exceptions import TelegramNetworkError
 
-from config import BOT_TOKEN, validate_bot_config
+from config import BOT_TOKEN, PRIVACY_POLICY_URL, validate_bot_config
 from database import close_database, wait_for_database
 from handlers import routers
 
@@ -22,6 +22,17 @@ async def main():
     dp = Dispatcher()
 
     try:
+        if PRIVACY_POLICY_URL:
+            try:
+                await bot.set_my_description(
+                    description=(
+                        "TeleGift анализирует экспорт переписки для подбора подарков. "
+                        f"Политика обработки персональных данных: {PRIVACY_POLICY_URL}"
+                    )
+                )
+            except Exception:
+                logger.exception("Failed to set bot privacy policy description")
+
         # Регистрация хэндлеров
         for router in routers:
             dp.include_router(router)

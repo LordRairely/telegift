@@ -3,6 +3,7 @@ import asyncio
 import aiohttp
 
 from config import YANDEX_API_KEY, YANDEX_FOLDER_ID
+from services.anonymizer import anonymize_free_text
 from services.prompts import build_dialog_question_prompt, build_gift_prompt
 
 YANDEX_API_URL = "https://llm.api.cloud.yandex.net/foundationModels/v1/completion"
@@ -25,6 +26,7 @@ async def generate_gift_ideas(dialog_text: str, gift_context: str = "") -> str:
 
     # Чтобы не превышать лимиты токенов, обрежем диалог до последних 10000 символов
     dialog_text = dialog_text[-10000:]
+    gift_context = anonymize_free_text(gift_context)
 
     # Формируем промпт
     prompt = build_gift_prompt(dialog_text, gift_context=gift_context)
@@ -86,7 +88,7 @@ async def answer_dialog_question(dialog_text: str, question: str) -> str:
         "x-folder-id": YANDEX_FOLDER_ID,
         "x-data-logging-enabled": "false",
     }
-    prompt = build_dialog_question_prompt(dialog_text[-10000:], question)
+    prompt = build_dialog_question_prompt(dialog_text[-10000:], anonymize_free_text(question))
     payload = {
         "modelUri": f"gpt://{YANDEX_FOLDER_ID}/yandexgpt",
         "completionOptions": {
